@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>JULA'S HERB — Event Dashboard 2026 (Preview)</title>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>html,body{margin:0;padding:0;}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useCallback } = React;
+function makeIcon(name){
+  return function Icon(props){
+    const { size = 24, color = "currentColor", ...rest } = props || {};
+    const data = (window.lucide && window.lucide.icons && (window.lucide.icons[name])) || [];
+    const kids = data.map((node, i) => React.createElement(node[0], { key: i, ...node[1] }));
+    return React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: color, strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", ...rest }, kids);
+  };
+}
+const Gift=makeIcon("Gift"), ShoppingBag=makeIcon("ShoppingBag"), Minus=makeIcon("Minus"),
+  Plus=makeIcon("Plus"), X=makeIcon("X"), Pencil=makeIcon("Pencil"), Trash2=makeIcon("Trash2"),
+  Filter=makeIcon("Filter"), Download=makeIcon("Download"), Upload=makeIcon("Upload"),
+  RotateCcw=makeIcon("RotateCcw"), ChevronLeft=makeIcon("ChevronLeft"), ChevronRight=makeIcon("ChevronRight"),
+  CalendarDays=makeIcon("CalendarDays"), List=makeIcon("List"), Sparkles=makeIcon("Sparkles"),
+  Copy=makeIcon("Copy"), Check=makeIcon("Check");
+
+/* ----------------------------- Reference data ---------------------------- */
+const BRAND = "#1f8a4c";
+
+const CATEGORIES = {
+  NPD:        { label: "NPD",       color: "#CA8A04", th: "ผลิตภัณฑ์" },
+  "T-Culture":{ label: "T-Culture", color: "#16a34a", th: "สงกรานต์/ประเพณี" },
+  Music:      { label: "Music",     color: "#8B5CF6", th: "ดนตรี/โชว์" },
+  Sport:      { label: "Sport",     color: "#0EA5E9", th: "กีฬา/วิ่ง" },
+  "New Gen":  { label: "New Gen",   color: "#EA580C", th: "เจนใหม่" },
+  Campus:     { label: "Campus",    color: "#EC4899", th: "สถานศึกษา" },
+  Campaign:   { label: "Campaign",  color: "#EF4444", th: "แคมเปญ" },
+  "Series":   { label: "รายการ & Series", color: "#0D9488", th: "รายการ/ซีรีส์" },
+};
+
+const WORK_TYPES = {
+  "แจก":     { label: "แจก",      Icon: Gift },
+  "ขายของ":  { label: "ขายของ",   Icon: ShoppingBag },
+  "-":       { label: "ไม่ระบุ",   Icon: Minus },
+};
+
+const TARGETS = {
+  "GenZ":   "#7C3AED",
+  "Mass":   "#0EA5A0",
+  "ทำงาน":  "#475569",
+};
+
+const AGENCIES = {
+  "คุณโย":   "#E8821E",
+  "คุณเฟิส": "#2D6FA8",
+  "":        "#cbd5e1",
+};
+
+const WEEKDAYS = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+const MONTHS_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+
+/* ------------------------------- Seed data -------------------------------- */
+// แกะจากไทม์ไลน์ + ปฏิทินรายเดือนในไฟล์ต้นฉบับ (Update: 8/5/69)
+// ฟิลด์ Target / Agency เป็นค่าตั้งต้นที่ "เดา" ให้ — แก้ไขได้ทั้งหมด
+const SEED = [
+  // ---- เมษายน ----
+  { d: "2026-04-01", t: "NPD กันแดดทาตัวทานตะวัน", c: "NPD", w: "แจก", tg: ["Mass"], ag: "", loc: "", n: "" },
+  { d: "2026-04-13", t: "ตะลอนข่าว 3 ประเพณี @เชียงใหม่", c: "T-Culture", w: "ขายของ", tg: ["Mass"], ag: "", loc: "จ.เชียงใหม่", n: "THAIRATH • วันโดยประมาณ" },
+  { d: "2026-04-13", t: "Thai Rhythm Songkran Festival", c: "T-Culture", w: "ขายของ", tg: ["Mass"], ag: "", loc: "CPN", n: "วันโดยประมาณ" },
+  { d: "2026-04-13", t: "ขอนแก่น Songkran Festival", c: "T-Culture", w: "ขายของ", tg: ["Mass"], ag: "", loc: "CPN ขอนแก่น", n: "วันโดยประมาณ" },
+  { d: "2026-04-19", t: "พัทยา วันไหล Songkran Festival", c: "T-Culture", w: "ขายของ", tg: ["Mass"], ag: "", loc: "CPN พัทยา", n: "วันโดยประมาณ" },
+  { d: "2026-04-29", t: "Goodbye Ontour • ออล ซีซั่นส์ เพลส", c: "New Gen", w: "แจก", tg: ["ทำงาน"], ag: "", loc: "ลาน Atrium 1", n: "พิธีกร ป๋าก๊ก / ตุ๊กกี้" },
+
+  // ---- พฤษภาคม ----
+  { d: "2026-05-07", t: "Goodbye Ontour • อาคารชินวัตร 3", c: "New Gen", w: "แจก", tg: ["ทำงาน"], ag: "", loc: "โถงล็อบบี้ ชั้น L", n: "ป๋าก๊ก / แน็ก อนิพรณ์" },
+  { d: "2026-05-08", t: "ช่องวันตะลุยโรงงาน • บางนา ลาซาล", c: "Music", w: "ขายของ", tg: ["ทำงาน"], ag: "", loc: "ยูแทคไทย (โรงงาน 1)", n: "ซื้อครบ 200.- เล่นเกม" },
+  { d: "2026-05-13", t: "Goodbye Ontour • สิงห์ คอมเพล็กซ์", c: "New Gen", w: "แจก", tg: ["ทำงาน"], ag: "", loc: "ลานกิจกรรม ชั้น G", n: "อุล / ตั้ม วราวุธ" },
+  { d: "2026-05-15", t: "ช่องวันตะลุยโรงงาน • ฉะเชิงเทรา", c: "Music", w: "ขายของ", tg: ["ทำงาน"], ag: "", loc: "ยูแทคไทย (โรงงาน 3) นิคมเวลโกรว์", n: "" },
+  { d: "2026-05-16", t: "เริ่มแคมเปญ สแกนลุ้นรวย สวยลุ้นล้าน", c: "Campaign", w: "-", tg: ["Mass"], ag: "", loc: "", n: "Kick-off แคมเปญFull year" },
+  { d: "2026-05-20", t: "Goodbye Ontour • Exchange Tower", c: "New Gen", w: "แจก", tg: ["ทำงาน"], ag: "", loc: "Exchange Tower", n: "ป๋าก๊ก / แจ็คกี้" },
+  { d: "2026-05-21", t: "แอโรบิก มักม่วนหน้าฮ้าน", c: "Sport", w: "แจก", tg: ["Mass", "ทำงาน"], ag: "", loc: "@สวนจตุจักร", n: "แจกบลูโรสอันเดอร์อาร์ม • Backdrop/Beach Flag JH" },
+  { d: "2026-05-23", t: "ช่องวันตะลุยโรงงาน • ปราจีนบุรี", c: "Music", w: "ขายของ", tg: ["ทำงาน"], ag: "", loc: "ไทยฟู้ดส์ กรุ๊ป", n: "" },
+  { d: "2026-05-27", t: "Goodbye Ontour • สินสาธร", c: "New Gen", w: "แจก", tg: ["ทำงาน"], ag: "", loc: "สินสาธร", n: "ป๋าก๊ก / ดีเจอ้อง" },
+  { d: "2026-05-29", t: "งานวิ่ง NEON RUN", c: "Sport", w: "แจก", tg: ["GenZ", "Mass"], ag: "", loc: "", n: "เน้น เจลกันแดดทานตะวัน / แตงโม 3D / บลูโรส" },
+  { d: "2026-05-30", t: "ช่องวันตะลุยโรงงาน • สมุทรปราการ", c: "Music", w: "ขายของ", tg: ["ทำงาน"], ag: "", loc: "มูราโมโต้ อีเล็คตรอน", n: "" },
+  { d: "2026-05-30", t: "งานวิ่ง NEON RUN (เกาะสมุย)", c: "Sport", w: "แจก", tg: ["GenZ", "Mass"], ag: "", loc: "Koh Samui • 10/5 km", n: "" },
+
+  // ---- มิถุนายน ----
+  { d: "2026-06-05", t: "School Tour • รร.สตรีมหาพฤฒาราม", c: "Campus", w: "แจก", tg: ["GenZ"], ag: "", loc: "", n: "" },
+  { d: "2026-06-06", t: "คอนเสิร์ต Gotcha Pop 4", c: "New Gen", w: "แจก", tg: ["GenZ"], ag: "", loc: "QSNCC", n: "เน้น กันแดด / บลูโรส / มอยส์" },
+  { d: "2026-06-08", t: "School Tour • รร.นวมินทราชินูทิศ เบญจมราชาลัย", c: "Campus", w: "แจก", tg: ["GenZ"], ag: "", loc: "", n: "" },
+  { d: "2026-06-11", t: "School Tour • ม.ราชภัฏวไลยอลงกรณ์", c: "Campus", w: "แจก", tg: ["GenZ"], ag: "", loc: "ในพระบรมราชูปถัมภ์", n: "" },
+  { d: "2026-06-13", t: "School Tour • ม.ศรีปทุม คณะบริหาร", c: "Campus", w: "แจก", tg: ["GenZ"], ag: "", loc: "วันปฐมนิเทศ", n: "" },
+  { d: "2026-06-19", t: "School Tour • ม.ธุรกิจบัณฑิตย์", c: "Campus", w: "แจก", tg: ["GenZ"], ag: "", loc: "", n: "" },
+  { d: "2026-06-24", t: "จับรางวัล สแกนลุ้นรวย ครั้งที่ 1", c: "Campaign", w: "-", tg: ["Mass"], ag: "", loc: "", n: "" },
+  { d: "2026-06-29", t: "School Tour • รร.สตรีศรีสุริโยทัย", c: "Campus", w: "แจก", tg: ["GenZ"], ag: "", loc: "", n: "" },
+
+  // ---- กรกฎาคม ----
+  { d: "2026-07-03", t: "School Tour • รร.สาธิตประสานมิตร (มัธยม)", c: "Campus", w: "แจก", tg: ["GenZ"], ag: "", loc: "", n: "" },
+  { d: "2026-07-05", t: "School Tour • ม.สวนสุนันทา", c: "Campus", w: "แจก", tg: ["GenZ"], ag: "", loc: "", n: "" },
+  { d: "2026-07-07", t: "ตะลอนข่าวเฟสติว้าว @นครพนม", c: "T-Culture", w: "ขายของ", tg: ["Mass"], ag: "", loc: "จ.นครพนม", n: "THAIRATH" },
+  { d: "2026-07-11", t: "School Tour • คณะวิทย์ ม.ลาดกระบัง", c: "Campus", w: "แจก", tg: ["GenZ"], ag: "", loc: "สจล.", n: "" },
+  { d: "2026-07-17", t: "School Tour • รร.สวนกุหลาบ นนทบุรี", c: "Campus", w: "แจก", tg: ["GenZ"], ag: "", loc: "", n: "" },
+  { d: "2026-07-22", t: "จับรางวัล สแกนลุ้นรวย ครั้งที่ 2", c: "Campaign", w: "-", tg: ["Mass"], ag: "", loc: "", n: "" },
+  { d: "2026-07-24", t: "School Tour • รร.วัดเขมาภิรตาราม", c: "Campus", w: "แจก", tg: ["GenZ"], ag: "", loc: "", n: "" },
+
+  // ---- สิงหาคม ----
+  { d: "2026-08-07", t: "School Tour • รร.วัดราชโอรส", c: "Campus", w: "แจก", tg: ["GenZ"], ag: "", loc: "", n: "" },
+  { d: "2026-08-26", t: "จับรางวัล สแกนลุ้นรวย ครั้งที่ 3", c: "Campaign", w: "-", tg: ["Mass"], ag: "", loc: "", n: "" },
+
+  // ---- กันยายน ----
+  { d: "2026-09-06", t: "ตะลอนข่าวเฟสติว้าว @พิจิตร", c: "T-Culture", w: "ขายของ", tg: ["Mass"], ag: "", loc: "จ.พิจิตร", n: "THAIRATH" },
+  { d: "2026-09-23", t: "จับรางวัล สแกนลุ้นรวย ครั้งที่ 4", c: "Campaign", w: "-", tg: ["Mass"], ag: "", loc: "", n: "" },
+  { d: "2026-09-26", t: "ROOKIE DIVOS CONCERT", c: "New Gen", w: "แจก", tg: ["GenZ"], ag: "", loc: "", n: "Atime" },
+  { d: "2026-09-26", t: "แซ่บซิ่งอีสานมิวสิคเฟสติวัล @ร้อยเอ็ด", c: "T-Culture", w: "แจก", tg: ["Mass", "GenZ"], ag: "", loc: "จ.ร้อยเอ็ด", n: "" },
+  { d: "2026-09-27", t: "แซ่บซิ่งอีสานมิวสิคเฟสติวัล @ร้อยเอ็ด", c: "T-Culture", w: "แจก", tg: ["Mass", "GenZ"], ag: "", loc: "จ.ร้อยเอ็ด", n: "" },
+
+  // ---- ตุลาคม ----
+  { d: "2026-10-17", t: "WP โจ๊ะสนั่นลั่นถึงใจ @สระบุรี", c: "Music", w: "ขายของ", tg: ["Mass"], ag: "", loc: "จ.สระบุรี", n: "" },
+  { d: "2026-10-21", t: "จับรางวัล สแกนลุ้นรวย ครั้งที่ 5", c: "Campaign", w: "-", tg: ["Mass"], ag: "", loc: "", n: "" },
+  { d: "2026-10-24", t: "WP โจ๊ะสนั่นลั่นถึงใจ @สมุทรสาคร", c: "Music", w: "ขายของ", tg: ["Mass"], ag: "", loc: "จ.สมุทรสาคร", n: "" },
+  { d: "2026-10-31", t: "WP โจ๊ะสนั่นลั่นถึงใจ @ปทุมธานี", c: "Music", w: "ขายของ", tg: ["Mass"], ag: "", loc: "จ.ปทุมธานี", n: "" },
+  { d: "2026-10-31", t: "ดวลเพลงชิงทุนสัญจร @ปทุมธานี", c: "Music", w: "ขายของ", tg: ["Mass"], ag: "", loc: "จ.ปทุมธานี", n: "ONE" },
+
+  // ---- พฤศจิกายน ----
+  { d: "2026-11-14", t: "ดวลเพลงชิงทุนสัญจร @อยุธยา", c: "Music", w: "ขายของ", tg: ["Mass"], ag: "", loc: "จ.อยุธยา", n: "ONE" },
+  { d: "2026-11-21", t: "ดวลเพลงชิงทุนสัญจร @โคราช", c: "Music", w: "ขายของ", tg: ["Mass"], ag: "", loc: "จ.นครราชสีมา", n: "ONE" },
+  { d: "2026-11-25", t: "จับรางวัล สแกนลุ้นรวย ครั้งที่ 6", c: "Campaign", w: "-", tg: ["Mass"], ag: "", loc: "", n: "" },
+  { d: "2026-11-28", t: "ดวลเพลงชิงทุนสัญจร @ระยอง", c: "Music", w: "ขายของ", tg: ["Mass"], ag: "", loc: "จ.ระยอง", n: "ONE" },
+
+  // ---- ธันวาคม ----
+  { d: "2026-12-16", t: "จบแคมเปญ สแกนลุ้นรวย สวยลุ้นล้าน", c: "Campaign", w: "-", tg: ["Mass"], ag: "", loc: "", n: "" },
+  { d: "2026-12-18", t: "จับรางวัล สแกนลุ้นรวย ครั้งที่ 7", c: "Campaign", w: "-", tg: ["Mass"], ag: "", loc: "", n: "" },
+  { d: "2026-12-20", t: "ประกาศรางวัลใหญ่ สแกนลุ้นรวย สวยลุ้นล้าน", c: "Campaign", w: "-", tg: ["Mass"], ag: "", loc: "", n: "" },
+].map((e, i) => ({
+  id: `seed-${i}`,
+  date: e.d, title: e.t, category: e.c, workType: e.w,
+  target: e.tg, agency: e.ag, location: e.loc || "", notes: e.n || "",
+  sponsorCost: 0, opCost: 0,
+}));
+
+// เพิ่มเลขนี้ทุกครั้งที่อัปเดตข้อมูลตั้งต้น เพื่อให้ปฏิทินดึงตารางใหม่อัตโนมัติ
+const SEED_VERSION = 15;
+
+// Sponsor Deals — m=[Jan..Dec] monthly payments, cat=Timeline category
+const M0 = [0,0,0,0,0,0,0,0,0,0,0,0];
+const SEED_DEALS = [
+  { id:"d1",  ch:"WORKPOINT",  prog:"ไมค์หมดหนี้",           cat:"NPD",       m:[720000,720000,720000,720000,720000,720000,720000,720000,720000,720000,0,0] },
+  { id:"d2",  ch:"WORKPOINT",  prog:"ไมค์ทองคำ",            cat:"NPD",       m:[338000,338000,338000,338000,338000,338000,338000,338000,338000,338000,0,0] },
+  { id:"d3",  ch:"WORKPOINT",  prog:"เพชรตัดเพชร",           cat:"NPD",       m:[171600,171600,171600,171600,171600,171600,171600,171600,171600,171600,0,0] },
+  { id:"d4",  ch:"WORKPOINT",  prog:"ชิงช้าสวรรค์ 2026",      cat:"NPD",       m:[110000,110000,110000,110000,110000,110000,110000,110000,110000,110000,0,0] },
+  { id:"d5",  ch:"WORKPOINT",  prog:"ละคร 19.00",            cat:"NPD",       m:[504000,504000,504000,504000,504000,504000,504000,504000,504000,504000,0,0] },
+  { id:"d6",  ch:"ONE",        prog:"ดวลเพลงชิงทุน",          cat:"NPD",       m:[200000,200000,200000,200000,200000,200000,200000,200000,200000,200000,0,0] },
+  { id:"d7",  ch:"ONE",        prog:"The Golden Song All Star", cat:"NPD",     m:[...M0] },
+  { id:"d8",  ch:"WORKPOINT",  prog:"โอมเพี้ยงอาจารย์คง",      cat:"NPD",       m:[...M0] },
+  { id:"d9",  ch:"WORKPOINT",  prog:"หกฉากครับอาจารย์",       cat:"NPD",       m:[0,0,0,0,550000,550000,550000,0,0,0,0,0] },
+  { id:"d10", ch:"THAIRATH",   prog:"รายการข่าว",             cat:"NPD",       m:[0,0,2200000,2200000,2200000,2200000,2200000,2200000,2200000,2200000,2200000,2200000] },
+  { id:"d11", ch:"THAIRATH",   prog:"รายการตะลอนข่าว",       cat:"NPD",       m:[...M0] },
+  { id:"d12", ch:"เช่นจ์",      prog:"คุณแฟนบ้านนอก",         cat:"NPD",       m:[0,0,0,1250000,1250000,0,0,0,0,0,0,0] },
+  { id:"d13", ch:"ONE",        prog:"นักตบบ้านโคกปั้ง (L3)",    cat:"NPD",       m:[0,0,1250000,1250000,0,0,0,0,0,0,0,0] },
+  { id:"d14", ch:"Be on Cloud", prog:"JETLAG",               cat:"NPD",       m:[0,360000,360000,360000,0,0,0,0,0,0,0,0] },
+  { id:"d15", ch:"CPN",        prog:"Thai Rhythm Songkran",  cat:"T-Culture", m:[0,0,0,2000000,0,0,0,0,0,0,0,0] },
+  { id:"d16", ch:"CPN",        prog:"ขอนแก่น Songkran",       cat:"T-Culture", m:[0,0,0,1000000,0,0,0,0,0,0,0,0] },
+  { id:"d17", ch:"CPN",        prog:"พัทยา วันไหล Songkran",   cat:"T-Culture", m:[0,0,0,2600000,0,0,0,0,0,0,0,0] },
+  { id:"d18", ch:"THAIRATH",   prog:"ตะลอนข่าว 3 ประเพณี",    cat:"T-Culture", m:[...M0] },
+  { id:"d19", ch:"Sport",      prog:"วิ่ง Neon Run",          cat:"Sport",     m:[0,0,0,0,500000,0,0,0,0,0,0,0] },
+  { id:"d20", ch:"Sport",      prog:"วิ่ง Bikini Run",        cat:"Sport",     m:[0,0,0,0,0,0,0,0,0,0,0,500000] },
+  { id:"d21", ch:"Atime",      prog:"Gotcha Pop 4",          cat:"New Gen",   m:[0,0,0,0,0,800000,0,0,0,0,0,0] },
+  { id:"d22", ch:"Atime",      prog:"Rookie Divos",          cat:"New Gen",   m:[0,0,0,0,0,0,0,0,800000,0,0,0] },
+  { id:"d24", ch:"Viu",        prog:"School Tour 25 Event",  cat:"Campus",    m:[0,0,0,0,325000,325000,325000,325000,0,0,0,0] },
+  { id:"d26", ch:"Heavenly",   prog:"หมอลำใจเกินร้อย",        cat:"Music",     m:[0,0,2400000,1200000,1200000,0,0,0,0,0,0,0] },
+  { id:"d27", ch:"ONE",        prog:"มวน จอย หรอย แรง",       cat:"Music",     m:[...M0] },
+  { id:"d28", ch:"WORKPOINT",  prog:"Goodbye Tour 2",        cat:"New Gen",   m:[...M0] },
+  { id:"d29", ch:"ONE",        prog:"วันยกช่องตะลุยโรงงาน",    cat:"Music",     m:[...M0] },
+  { id:"d30", ch:"ONE",        prog:"ดวลเพลงชิงทุนสัญจร",     cat:"Music",     m:[...M0] },
+].map(d => ({ ...d, cost: (d.m || M0).reduce((a, v) => a + v, 0) }));
+
+// โปรแกรมต่อเนื่อง / Unassignedวันในไฟล์ — ไว้เตือนความจำ ผู้ใช้กดเพิ่มลงปฏิทินได้
+const PROGRAMS = [
+  "หมอลำใจเกินร้อย — 80 events (ใจเกินร้อย 50 / แต้ว 15 / รถแห่ 15) • Apr–May, Sep • Selling • Mass • [Music]",
+  "School Tour — 30 events (20 schools / 5 colleges / 5 universities) • May–Dec • Giveaway • GenZ",
+  "Press Con สแกนลุ้นรวย สวยลุ้นล้าน • Jun (date TBD)",
+  "งานวิ่ง • Aug (date TBD)",
+  "Bikini Run • Oct (date TBD)",
+  "มวน จอย หรอย แรง — ONE • Mar (date TBD)",
+];
+
+/* ------------------------------- Utilities -------------------------------- */
+const pad = (n) => String(n).padStart(2, "0");
+const ymd = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`;
+const newId = () => `e-${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
+const fmt = (n) => Number(n || 0).toLocaleString("en-US");
+const blankForm = (date) => ({
+  id: null, date: date || "2026-05-01", title: "", category: "NPD",
+  workType: "แจก", target: [], agency: "", location: "", notes: "",
+  sponsorCost: 0, opCost: 0,
+});
+
+/* ================================ Component =============================== */
+function App() {
+  const [events, setEvents] = useState(SEED);
+  const [deals, setDeals] = useState(SEED_DEALS);
+  const [ready, setReady] = useState(false);
+  const [month, setMonth] = useState(5);
+  const [view, setView] = useState("calendar");
+  const [editing, setEditing] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showDeals, setShowDeals] = useState(false);
+  const [editDeal, setEditDeal] = useState(null);
+  const [io, setIo] = useState(null); // {mode:'export'|'import', text}
+  const [copied, setCopied] = useState(false);
+  const [filters, setFilters] = useState({
+    category: new Set(), workType: new Set(), target: new Set(), agency: new Set(),
+  });
+  const YEAR = 2026;
+
+  /* ---- load / persist ---- */
+  useEffect(() => {
+    (async () => {
+      try {
+        if (window.storage) {
+          let ver = null;
+          try { const v = await window.storage.get("jh2026:seedv"); ver = v && v.value; } catch (_) {}
+          const r = await window.storage.get("jh2026:events");
+          if (r && r.value && ver === String(SEED_VERSION)) {
+            setEvents(JSON.parse(r.value));
+            try { const d = await window.storage.get("jh2026:deals"); if (d && d.value) setDeals(JSON.parse(d.value)); } catch(_){}
+          } else {
+            setEvents(SEED); setDeals(SEED_DEALS);
+            await window.storage.set("jh2026:events", JSON.stringify(SEED));
+            await window.storage.set("jh2026:deals", JSON.stringify(SEED_DEALS));
+            await window.storage.set("jh2026:seedv", String(SEED_VERSION));
+          }
+        }
+      } catch (_) {}
+      setReady(true);
+    })();
+  }, []);
+
+  const persist = useCallback(async (next) => {
+    setEvents(next);
+    try {
+      if (window.storage) {
+        await window.storage.set("jh2026:events", JSON.stringify(next));
+        await window.storage.set("jh2026:seedv", String(SEED_VERSION));
+      }
+    } catch (_) {}
+  }, []);
+
+  const persistDeals = useCallback(async (next) => {
+    setDeals(next);
+    try { if (window.storage) await window.storage.set("jh2026:deals", JSON.stringify(next)); } catch (_) {}
+  }, []);
+
+  /* ---- filtering ---- */
+  const match = useCallback((ev) => {
+    const f = filters;
+    if (f.category.size && !f.category.has(ev.category)) return false;
+    if (f.workType.size && !f.workType.has(ev.workType)) return false;
+    if (f.target.size && !ev.target.some((t) => f.target.has(t))) return false;
+    if (f.agency.size && !f.agency.has(ev.agency || "")) return false;
+    return true;
+  }, [filters]);
+
+  const visible = useMemo(() => events.filter(match), [events, match]);
+
+  const byDate = useMemo(() => {
+    const map = {};
+    visible.forEach((e) => { (map[e.date] = map[e.date] || []).push(e); });
+    return map;
+  }, [visible]);
+
+  const anyFilter = Object.values(filters).some((s) => s.size);
+  const toggleFilter = (dim, val) => {
+    setFilters((prev) => {
+      const s = new Set(prev[dim]);
+      s.has(val) ? s.delete(val) : s.add(val);
+      return { ...prev, [dim]: s };
+    });
+  };
+  const clearFilters = () => setFilters({
+    category: new Set(), workType: new Set(), target: new Set(), agency: new Set(),
+  });
+
+  /* ---- stats (respect filters) ---- */
+  const stats = useMemo(() => {
+    const s = { total: visible.length, cat: {}, work: {}, tgt: {}, ag: {} };
+    Object.keys(CATEGORIES).forEach((k) => (s.cat[k] = 0));
+    visible.forEach((e) => {
+      s.cat[e.category] = (s.cat[e.category] || 0) + 1;
+      s.work[e.workType] = (s.work[e.workType] || 0) + 1;
+      e.target.forEach((t) => (s.tgt[t] = (s.tgt[t] || 0) + 1));
+      const a = e.agency || "—";
+      s.ag[a] = (s.ag[a] || 0) + 1;
+      s.sponsor = (s.sponsor || 0) + (e.sponsorCost || 0);
+      s.ops = (s.ops || 0) + (e.opCost || 0);
+    });
+    s.dealTotal = deals.reduce((a, d) => a + ((d.m || M0).reduce((s, v) => s + v, 0)), 0);
+    s.totalSpend = s.dealTotal + (s.ops || 0);
+    return s;
+  }, [visible, deals]);
+
+  const monthCount = useMemo(() => {
+    const c = Array(12).fill(0);
+    visible.forEach((e) => { c[parseInt(e.date.slice(5, 7), 10) - 1]++; });
+    return c;
+  }, [visible]);
+
+  /* ---- CRUD ---- */
+  const saveEvent = () => {
+    const f = { ...editing, agency: (editing.agency || "").trim() };
+    if (!f.title.trim()) return;
+    let next;
+    if (f.id) next = events.map((e) => (e.id === f.id ? { ...f } : e));
+    else next = [...events, { ...f, id: newId() }];
+    persist(next);
+    setEditing(null);
+  };
+  const deleteEvent = (id) => { persist(events.filter((e) => e.id !== id)); setEditing(null); };
+
+  /* ---- import / export ---- */
+  const openExport = () => {
+    setIo({ mode: "export", text: JSON.stringify({ events, deals }, null, 2) });
+    setCopied(false);
+  };
+  const openImport = () => { setIo({ mode: "import", text: "" }); };
+  const doImport = () => {
+    try {
+      const parsed = JSON.parse(io.text);
+      if (Array.isArray(parsed)) {
+        persist(parsed.map((e) => ({ ...e, id: e.id || newId(), target: e.target || [] })));
+        setIo(null);
+      }
+    } catch (_) { alert("รูปแบบ JSON ไม่ถูกต้อง"); }
+  };
+  const exportCsv = () => {
+    const head = ["date", "title", "category", "workType", "target", "agency", "location", "notes"];
+    const rows = events.map((e) => [
+      e.date, e.title, e.category, e.workType, (e.target || []).join("|"),
+      e.agency, e.location, e.notes,
+    ].map((v) => `"${String(v || "").replace(/"/g, '""')}"`).join(","));
+    setIo({ mode: "export", text: [head.join(","), ...rows].join("\n") });
+    setCopied(false);
+  };
+  const copyText = async () => {
+    try { await navigator.clipboard.writeText(io.text); setCopied(true); setTimeout(() => setCopied(false), 1500); }
+    catch (_) {}
+  };
+  const resetSeed = () => { if (confirm("Reset to default data? (All edits will be lost)")) { persist(SEED); persistDeals(SEED_DEALS); } };
+
+  /* ---- calendar grid ---- */
+  const grid = useMemo(() => {
+    const first = new Date(YEAR, month, 1).getDay();
+    const days = new Date(YEAR, month + 1, 0).getDate();
+    const cells = [];
+    for (let i = 0; i < first; i++) cells.push(null);
+    for (let d = 1; d <= days; d++) cells.push(d);
+    while (cells.length % 7) cells.push(null);
+    return cells;
+  }, [month]);
+
+  if (!ready) {
+    return <div style={{ padding: 40, fontFamily: "system-ui", color: "#64748b" }}>Loading...</div>;
+  }
+
+  /* =============================== Render =============================== */
+  return (
+    <div style={{ minHeight: "100vh", background: "#f4f6f3", color: "#1f2937", fontFamily: "'IBM Plex Sans Thai', 'Sarabun', sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap');
+        * { box-sizing: border-box; }
+        .kanit { font-family: 'Kanit', sans-serif; }
+        .cell:hover .addbtn { opacity: 1; }
+        .chip:hover { filter: brightness(0.95); }
+        ::-webkit-scrollbar { width: 9px; height: 9px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 6px; }
+      `}</style>
+
+      {/* ---------- Header ---------- */}
+      <header style={{ background: `linear-gradient(120deg, ${BRAND}, #14663a)`, color: "#fff", padding: "20px 24px" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16, justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(255,255,255,.16)", display: "grid", placeItems: "center" }}>
+              <Sparkles size={24} />
+            </div>
+            <div>
+              <div className="kanit" style={{ fontSize: 22, fontWeight: 700, letterSpacing: ".5px", lineHeight: 1 }}>JULA'S HERB</div>
+              <div style={{ fontSize: 13, opacity: .9, marginTop: 4 }}>Event Dashboard 2026 · Event Calendar (B.E. 2569)</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <HBtn onClick={() => setShowDeals(true)} icon={ShoppingBag}>Sponsor Deals</HBtn>
+            <HBtn onClick={openExport} icon={Download}>Export JSON</HBtn>
+            <HBtn onClick={exportCsv} icon={Download}>CSV</HBtn>
+            <HBtn onClick={openImport} icon={Upload}>Import</HBtn>
+            <HBtn onClick={resetSeed} icon={RotateCcw}>Reset</HBtn>
+          </div>
+        </div>
+      </header>
+
+      <main style={{ maxWidth: 1280, margin: "0 auto", padding: "20px 24px 60px" }}>
+        {/* ---------- Stat cards ---------- */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, marginBottom: 16 }}>
+          <StatCard label="Total Events" value={stats.total} accent={BRAND} sub={anyFilter ? "(filtered)" : "Full year"} />
+          <StatCard label="Sponsor Cost" value={fmt(stats.dealTotal || 0)} accent="#CA8A04" sub="฿" />
+          <StatCard label="Agency / Op Cost" value={fmt(stats.ops || 0)} accent="#2D6FA8" sub="฿" />
+          <StatCard label="Total Spend" value={fmt(stats.totalSpend || 0)} accent="#DC2626" sub="฿" />
+        </div>
+
+        {/* ---------- Toolbar ---------- */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {view === "timeline" ? (
+              <div className="kanit" style={{ fontSize: 20, fontWeight: 600 }}>Year Overview <span style={{ color: "#94a3b8", fontSize: 15 }}>2026</span></div>
+            ) : view === "budget" ? (
+              <div className="kanit" style={{ fontSize: 20, fontWeight: 600 }}>Budget Overview <span style={{ color: "#94a3b8", fontSize: 15 }}>2026</span></div>
+            ) : (<>
+              <button onClick={() => setMonth((m) => (m + 11) % 12)} style={navBtn}><ChevronLeft size={18} /></button>
+              <div className="kanit" style={{ fontSize: 20, fontWeight: 600, minWidth: 168, textAlign: "center" }}>
+                {MONTHS[month]} <span style={{ color: "#94a3b8", fontSize: 15 }}>2026</span>
+              </div>
+              <button onClick={() => setMonth((m) => (m + 1) % 12)} style={navBtn}><ChevronRight size={18} /></button>
+            </>)}
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <SegBtn active={view === "calendar"} onClick={() => setView("calendar")} icon={CalendarDays}>Calendar</SegBtn>
+            <SegBtn active={view === "list"} onClick={() => setView("list")} icon={List}>List</SegBtn>
+            <SegBtn active={view === "timeline"} onClick={() => setView("timeline")} icon={CalendarDays}>Timeline</SegBtn>
+            <SegBtn active={view === "budget"} onClick={() => setView("budget")} icon={ShoppingBag}>Budget</SegBtn>
+            <SegBtn active={showFilters || anyFilter} onClick={() => setShowFilters((s) => !s)} icon={Filter}>
+              Filter{anyFilter ? ` (${Object.values(filters).reduce((a, s) => a + s.size, 0)})` : ""}
+            </SegBtn>
+            <button onClick={() => setEditing(blankForm(ymd(YEAR, month, 1)))}
+              className="kanit" style={{ ...navBtn, background: BRAND, color: "#fff", border: "none", padding: "0 16px", display: "flex", alignItems: "center", gap: 6, fontWeight: 600 }}>
+              <Plus size={18} /> Add Event
+            </button>
+          </div>
+        </div>
+
+        {/* ---------- Month strip ---------- */}
+        {view !== "timeline" && view !== "budget" && (
+        <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 8, marginBottom: 14 }}>
+          {MONTHS.map((mn, i) => (
+            <button key={i} onClick={() => setMonth(i)} className="kanit"
+              style={{
+                flex: "0 0 auto", padding: "6px 12px", borderRadius: 20, cursor: "pointer",
+                border: i === month ? `2px solid ${BRAND}` : "1px solid #e2e8f0",
+                background: i === month ? "#e8f5ee" : "#fff", fontSize: 13,
+                color: i === month ? BRAND : "#475569", fontWeight: i === month ? 600 : 500,
+                display: "flex", alignItems: "center", gap: 6,
+              }}>
+              {mn.slice(0, 3)}
+              {monthCount[i] > 0 && (
+                <span style={{ background: i === month ? BRAND : "#94a3b8", color: "#fff", borderRadius: 10, fontSize: 11, padding: "0 6px", fontWeight: 600 }}>{monthCount[i]}</span>
+              )}
+            </button>
+          ))}
+        </div>
+        )}
+
+        {/* ---------- Filters panel ---------- */}
+        {showFilters && (
+          <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 16, border: "1px solid #e8ece8", display: "grid", gap: 14 }}>
+            <FilterRow title="Category">
+              {Object.entries(CATEGORIES).map(([k, v]) => (
+                <FChip key={k} active={filters.category.has(k)} color={v.color} onClick={() => toggleFilter("category", k)}>{v.label}</FChip>
+              ))}
+            </FilterRow>
+            <FilterRow title="Work Type">
+              {["แจก", "ขายของ", "-"].map((k) => (
+                <FChip key={k} active={filters.workType.has(k)} color={k === "แจก" ? "#16a34a" : k === "ขายของ" ? "#E8821E" : "#94a3b8"} onClick={() => toggleFilter("workType", k)}>{WORK_TYPES[k].label}</FChip>
+              ))}
+            </FilterRow>
+            <FilterRow title="Target">
+              {Object.entries(TARGETS).map(([k, c]) => (
+                <FChip key={k} active={filters.target.has(k)} color={c} onClick={() => toggleFilter("target", k)}>{k}</FChip>
+              ))}
+            </FilterRow>
+            <FilterRow title="Agency">
+              {["คุณโย", "คุณเฟิส", ""].map((k) => (
+                <FChip key={k || "none"} active={filters.agency.has(k)} color={AGENCIES[k]} onClick={() => toggleFilter("agency", k)}>{k || "Unassigned"}</FChip>
+              ))}
+            </FilterRow>
+            {anyFilter && (
+              <button onClick={clearFilters} style={{ justifySelf: "start", border: "none", background: "#f1f5f9", color: "#475569", borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontSize: 13 }}>
+                ล้างFilterทั้งหมด
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ---------- Calendar view ---------- */}
+        {view === "calendar" && (
+          <div style={{ background: "#fff", borderRadius: 16, padding: 14, border: "1px solid #e8ece8" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6, marginBottom: 6 }}>
+              {WEEKDAYS.map((w, i) => (
+                <div key={w} className="kanit" style={{ textAlign: "center", fontSize: 13, fontWeight: 600, color: i === 0 ? "#ef4444" : i === 6 ? "#3b82f6" : "#64748b", padding: "4px 0" }}>{w}</div>
+              ))}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6 }}>
+              {grid.map((d, i) => {
+                if (!d) return <div key={i} style={{ minHeight: 96, borderRadius: 10, background: "#fafbfa" }} />;
+                const ds = ymd(YEAR, month, d);
+                const evs = byDate[ds] || [];
+                const wd = new Date(YEAR, month, d).getDay();
+                return (
+                  <div key={i} className="cell" style={{ minHeight: 96, borderRadius: 10, border: "1px solid #eef1ee", background: evs.length ? "#fff" : "#fcfdfc", padding: 6, position: "relative", display: "flex", flexDirection: "column", gap: 4 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: wd === 0 ? "#ef4444" : wd === 6 ? "#3b82f6" : "#94a3b8" }}>{d}</span>
+                      <button className="addbtn" onClick={() => setEditing(blankForm(ds))}
+                        style={{ opacity: 1, border: "none", background: "#eef5f0", color: BRAND, borderRadius: 6, width: 22, height: 22, display: "grid", placeItems: "center", cursor: "pointer", fontSize: 14, fontWeight: 700 }}>
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                    {evs.map((e) => <EventChip key={e.id} e={e} onClick={() => setEditing({ ...e })} />)}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ---------- List view ---------- */}
+        {view === "list" && (
+          <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e8ece8", overflow: "hidden" }}>
+            {[...visible].filter((e) => parseInt(e.date.slice(5, 7), 10) - 1 === month)
+              .sort((a, b) => a.date.localeCompare(b.date))
+              .map((e) => <ListRow key={e.id} e={e} onEdit={() => setEditing({ ...e })} />)}
+            {visible.filter((e) => parseInt(e.date.slice(5, 7), 10) - 1 === month).length === 0 && (
+              <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>No events this month</div>
+            )}
+          </div>
+        )}
+
+        {/* ---------- Timeline (whole year, Gantt-style) ---------- */}
+        {view === "timeline" && <Timeline events={visible} onPick={(e) => setEditing({ ...e })} />}
+
+        {/* ---------- Budget view ---------- */}
+        {view === "budget" && (() => {
+          const MA = MONTHS_ABBR;
+          // monthly sponsor totals from deals
+          const sponMonth = Array(12).fill(0);
+          deals.forEach(d => (d.m || []).forEach((v, i) => sponMonth[i] += v));
+          const dealTotal = sponMonth.reduce((a, v) => a + v, 0);
+          // monthly event op costs
+          const opMonth = Array(12).fill(0);
+          events.forEach(e => { if (e.opCost > 0) opMonth[parseInt(e.date.slice(5, 7), 10) - 1] += e.opCost; });
+          const opTotal = opMonth.reduce((a, v) => a + v, 0);
+          const grand = dealTotal + opTotal;
+          const totalMonth = sponMonth.map((v, i) => v + opMonth[i]);
+          // quarters
+          const qSum = (arr, q) => arr.slice(q * 3, q * 3 + 3).reduce((a, v) => a + v, 0);
+          // group deals by channel
+          const byCh = {};
+          deals.forEach(d => { if (!byCh[d.ch]) byCh[d.ch] = { deals: [], total: 0 }; byCh[d.ch].deals.push(d); byCh[d.ch].total += (d.cost || 0); });
+          // group op by category
+          const byCat = {};
+          events.forEach(e => { if (e.opCost > 0) { const k = e.category; if (!byCat[k]) byCat[k] = { events: [], total: 0 }; byCat[k].events.push(e); byCat[k].total += e.opCost; }});
+
+          const hd = { padding: "8px 6px", textAlign: "right", fontSize: 11, fontWeight: 600, color: "#64748b", whiteSpace: "nowrap" };
+          const cell = { padding: "7px 6px", textAlign: "right", fontSize: 12, fontFamily: "'Kanit',sans-serif" };
+          const qCell = { ...cell, fontWeight: 700, background: "#f8faf8" };
+
+          return (<>
+            {/* Summary cards */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14, marginBottom: 20 }}>
+              <div style={{ background: "#FFFBEB", borderRadius: 14, padding: "18px 20px", border: "1px solid #FDE68A" }}>
+                <div style={{ fontSize: 12, color: "#92400E", fontWeight: 600 }}>Sponsor Deals</div>
+                <div className="kanit" style={{ fontSize: 28, fontWeight: 700, color: "#CA8A04" }}>฿{fmt(dealTotal)}</div>
+                <div style={{ fontSize: 12, color: "#A16207" }}>{deals.length} deals</div>
+              </div>
+              <div style={{ background: "#EFF6FF", borderRadius: 14, padding: "18px 20px", border: "1px solid #BFDBFE" }}>
+                <div style={{ fontSize: 12, color: "#1E40AF", fontWeight: 600 }}>Event Costs (Agency/Op)</div>
+                <div className="kanit" style={{ fontSize: 28, fontWeight: 700, color: "#2563EB" }}>฿{fmt(opTotal)}</div>
+              </div>
+              <div style={{ background: "#FEF2F2", borderRadius: 14, padding: "18px 20px", border: "1px solid #FECACA" }}>
+                <div style={{ fontSize: 12, color: "#991B1B", fontWeight: 600 }}>Grand Total</div>
+                <div className="kanit" style={{ fontSize: 28, fontWeight: 700, color: "#DC2626" }}>฿{fmt(grand)}</div>
+              </div>
+            </div>
+
+            {/* TABLE 1: Monthly by Category — detail */}
+            {(() => {
+              const catKeys = Object.keys(CATEGORIES);
+              const dealsByCat = {};
+              catKeys.forEach(k => dealsByCat[k] = []);
+              deals.forEach(d => { const k = d.cat || "NPD"; if (dealsByCat[k]) dealsByCat[k].push(d); else dealsByCat["NPD"].push(d); });
+              const catMonth = (ds) => { const r = [...M0]; ds.forEach(d => (d.m||M0).forEach((v,i) => r[i]+=v)); return r; };
+              return (
+              <div style={{ background: "#fff", borderRadius: 16, padding: 18, border: "1px solid #e8ece8", marginBottom: 16, overflowX: "auto" }}>
+                <div className="kanit" style={{ fontWeight: 600, fontSize: 16, marginBottom: 12 }}>Monthly Sponsor Cost by Category</div>
+                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1000, fontSize: 12 }}>
+                  <thead><tr style={{ borderBottom: "2px solid #e2e8f0" }}>
+                    <th style={{ ...hd, textAlign: "left", minWidth: 180 }}>Category / Channel / Program</th>
+                    {MA.map((m, i) => <th key={i} style={hd}>{m}</th>)}
+                    <th style={{ ...hd, color: "#DC2626", borderLeft: "2px solid #e2e8f0" }}>Total</th>
+                  </tr></thead>
+                  <tbody>
+                    {catKeys.map(ck => {
+                      const cat = CATEGORIES[ck];
+                      const ds = dealsByCat[ck];
+                      if (!ds.length) return null;
+                      const sub = catMonth(ds);
+                      const subTotal = sub.reduce((a,v)=>a+v,0);
+                      return (<React.Fragment key={ck}>
+                        {/* category subtotal row */}
+                        <tr style={{ background: cat.color + "18", borderTop: "2px solid " + cat.color }}>
+                          <td style={{ ...cell, textAlign: "left", fontWeight: 700, color: cat.color }}><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 3, background: cat.color, marginRight: 6 }}/>{cat.label} ({ds.length})</td>
+                          {sub.map((v,i) => <td key={i} style={{ ...cell, fontWeight: 700, color: cat.color }}>{v ? fmt(v) : "—"}</td>)}
+                          <td style={{ ...cell, fontWeight: 700, color: cat.color, borderLeft: "2px solid #e2e8f0" }}>{fmt(subTotal)}</td>
+                        </tr>
+                        {/* individual deals */}
+                        {ds.filter(d=>d.cost>0).map(d => (
+                          <tr key={d.id} style={{ borderBottom: "1px solid #f8faf8" }}>
+                            <td style={{ ...cell, textAlign: "left", paddingLeft: 22, color: "#64748b" }}><span style={{ color: "#94a3b8", marginRight: 4 }}>{d.ch}</span> {d.prog}</td>
+                            {(d.m||M0).map((v,i) => <td key={i} style={{ ...cell, color: v ? "#475569" : "#e2e8f0" }}>{v ? fmt(v) : "—"}</td>)}
+                            <td style={{ ...cell, fontWeight: 600, borderLeft: "2px solid #e2e8f0" }}>{fmt(d.cost)}</td>
+                          </tr>
+                        ))}
+                      </React.Fragment>);
+                    })}
+                    {/* Grand total */}
+                    <tr style={{ borderTop: "3px solid #1f2937" }}>
+                      <td style={{ ...cell, textAlign: "left", fontWeight: 700, color: "#DC2626", fontSize: 13 }}>GRAND TOTAL</td>
+                      {sponMonth.map((v,i) => <td key={i} style={{ ...cell, fontWeight: 700, fontSize: 13 }}>{v ? fmt(v) : "—"}</td>)}
+                      <td style={{ ...cell, fontWeight: 700, color: "#DC2626", borderLeft: "2px solid #e2e8f0", fontSize: 13 }}>{fmt(dealTotal)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>);
+            })()}
+
+            {/* TABLE 2: Quarterly Summary */}
+            <div style={{ background: "#fff", borderRadius: 16, padding: 18, border: "1px solid #e8ece8", marginBottom: 16, overflowX: "auto" }}>
+              <div className="kanit" style={{ fontWeight: 600, fontSize: 16, marginBottom: 12 }}>Quarterly Summary</div>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 500 }}>
+                <thead><tr style={{ borderBottom: "2px solid #e2e8f0" }}>
+                  <th style={{ ...hd, textAlign: "left", minWidth: 120 }}></th>
+                  <th style={hd}>Q1 (Jan–Mar)</th><th style={hd}>Q2 (Apr–Jun)</th><th style={hd}>Q3 (Jul–Sep)</th><th style={hd}>Q4 (Oct–Dec)</th>
+                  <th style={{ ...hd, color: "#DC2626", borderLeft: "2px solid #e2e8f0" }}>TOTAL</th>
+                </tr></thead>
+                <tbody>
+                  {Object.keys(CATEGORIES).map(ck => {
+                    const cat = CATEGORIES[ck];
+                    const cm = [...M0]; deals.filter(d => d.cat === ck).forEach(d => (d.m||M0).forEach((v,i) => cm[i]+=v));
+                    const total = cm.reduce((a,v)=>a+v,0);
+                    if (!total) return null;
+                    return (
+                      <tr key={ck} style={{ borderBottom: "1px solid #f1f5f4" }}>
+                        <td style={{ ...cell, textAlign: "left", fontWeight: 600 }}><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 3, background: cat.color, marginRight: 6 }}/>{cat.label}</td>
+                        {[0,1,2,3].map(q => <td key={q} style={cell}>{fmt(qSum(cm, q))}</td>)}
+                        <td style={{ ...cell, fontWeight: 700, color: cat.color, borderLeft: "2px solid #e2e8f0" }}>{fmt(total)}</td>
+                      </tr>
+                    );
+                  })}
+                  <tr style={{ borderBottom: "1px solid #f1f5f4" }}>
+                    <td style={{ ...cell, textAlign: "left", fontWeight: 600, color: "#2563EB" }}>Event Cost (Op)</td>
+                    {[0,1,2,3].map(q => <td key={q} style={cell}>{fmt(qSum(opMonth, q))}</td>)}
+                    <td style={{ ...cell, fontWeight: 700, color: "#2563EB", borderLeft: "2px solid #e2e8f0" }}>{fmt(opTotal)}</td>
+                  </tr>
+                  <tr style={{ borderTop: "3px solid #1f2937" }}>
+                    <td style={{ ...cell, textAlign: "left", fontWeight: 700, color: "#DC2626", fontSize: 14 }}>GRAND TOTAL</td>
+                    {[0,1,2,3].map(q => <td key={q} style={{ ...cell, fontWeight: 700, fontSize: 14 }}>{fmt(qSum(totalMonth, q))}</td>)}
+                    <td style={{ ...cell, fontWeight: 700, color: "#DC2626", borderLeft: "2px solid #e2e8f0", fontSize: 14 }}>{fmt(grand)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Sponsor Deals by Channel */}
+            <div style={{ background: "#fff", borderRadius: 16, padding: 18, border: "1px solid #e8ece8", marginBottom: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                <div className="kanit" style={{ fontWeight: 600, fontSize: 16 }}>Sponsor Deals by Channel</div>
+                <button onClick={() => { setEditDeal({ id: null, ch: "", prog: "", cat: "NPD", m: [...M0], cost: 0 }); setShowDeals(true); }}
+                  className="kanit" style={{ padding: "6px 12px", borderRadius: 8, border: "1px dashed #cbd5e1", background: "#fff", color: BRAND, fontWeight: 600, cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 5 }}>
+                  <Plus size={14} /> Add Deal
+                </button>
+              </div>
+              {Object.entries(byCh).sort((a, b) => b[1].total - a[1].total).map(([ch, g]) => (
+                <div key={ch} style={{ marginBottom: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid #f1f5f4" }}>
+                    <span className="kanit" style={{ fontWeight: 600, fontSize: 14, color: "#1f2937" }}>{ch}</span>
+                    <span className="kanit" style={{ fontWeight: 700, fontSize: 14, color: g.total > 0 ? "#CA8A04" : "#94a3b8" }}>{g.total > 0 ? "฿" + fmt(g.total) : "Free"}</span>
+                  </div>
+                  {g.deals.map(d => (
+                    <div key={d.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0 5px 16px", fontSize: 13, color: "#64748b" }}>
+                      <span>{d.prog}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontWeight: 600, color: d.cost > 0 ? "#475569" : "#94a3b8" }}>{d.cost > 0 ? "฿" + fmt(d.cost) : "Free"}</span>
+                        <button onClick={() => { setEditDeal({ ...d }); setShowDeals(true); }} style={{ border: "none", background: "transparent", color: "#94a3b8", cursor: "pointer", padding: 2 }}><Pencil size={13} /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+
+            {/* Event Costs by Category */}
+            <div style={{ background: "#fff", borderRadius: 16, padding: 18, border: "1px solid #e8ece8" }}>
+              <div className="kanit" style={{ fontWeight: 600, fontSize: 16, marginBottom: 14 }}>Event Costs by Category</div>
+              {Object.keys(byCat).length === 0 ? (
+                <div style={{ padding: 30, textAlign: "center", color: "#94a3b8" }}>No event costs entered yet — edit events to add costs</div>
+              ) : Object.entries(byCat).sort((a, b) => b[1].total - a[1].total).map(([catKey, g]) => {
+                const cat = CATEGORIES[catKey] || { label: catKey, color: "#94a3b8" };
+                return (
+                  <div key={catKey} style={{ marginBottom: 12 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid #f1f5f4" }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <i style={{ width: 12, height: 12, borderRadius: 3, background: cat.color, display: "inline-block" }} />
+                        <span className="kanit" style={{ fontWeight: 600, fontSize: 14 }}>{cat.label}</span>
+                      </span>
+                      <span className="kanit" style={{ fontWeight: 700, fontSize: 14, color: "#2563EB" }}>฿{fmt(g.total)}</span>
+                    </div>
+                    {g.events.sort((a, b) => a.date.localeCompare(b.date)).map(e => (
+                      <div key={e.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0 5px 16px", fontSize: 13, color: "#64748b" }}>
+                        <span>{e.date.slice(5)} · {e.title}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontWeight: 600, color: "#475569" }}>฿{fmt(e.opCost)}</span>
+                          <button onClick={() => setEditing({ ...e })} style={{ border: "none", background: "transparent", color: "#94a3b8", cursor: "pointer", padding: 2 }}><Pencil size={13} /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </>);
+        })()}
+
+        {/* ---------- Programs / undated (List view only) ---------- */}
+        {view === "list" && (
+        <div style={{ marginTop: 22, background: "#fff", borderRadius: 16, padding: 18, border: "1px dashed #cbd5d1" }}>
+          <div className="kanit" style={{ fontWeight: 600, marginBottom: 10, color: "#475569" }}>Ongoing Programs / Unscheduled</div>
+          <ul style={{ margin: 0, paddingLeft: 18, color: "#64748b", fontSize: 14, lineHeight: 1.9 }}>
+            {PROGRAMS.map((p, i) => <li key={i}>{p}</li>)}
+          </ul>
+        </div>
+        )}
+
+        {/* ---------- Legend ---------- */}
+        <div style={{ marginTop: 18, display: "flex", flexWrap: "wrap", gap: 14, alignItems: "center", fontSize: 13, color: "#64748b" }}>
+          {Object.entries(CATEGORIES).map(([k, v]) => (
+            <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <i style={{ width: 12, height: 12, borderRadius: 3, background: v.color, display: "inline-block" }} /> {v.label}
+            </span>
+          ))}
+          <span style={{ marginLeft: "auto", color: "#94a3b8" }}>Changes saved automatically on this device</span>
+        </div>
+      </main>
+
+      {/* ---------- Editor modal ---------- */}
+      {editing && (
+        <Modal onClose={() => setEditing(null)} title={editing.id ? "Edit Event" : "Add Event"}>
+          <Field label="Event Name">
+            <input value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} style={inp} placeholder="e.g. School Tour • School name ..." autoFocus />
+          </Field>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <Field label="Date">
+              <input type="date" value={editing.date} min="2026-01-01" max="2026-12-31" onChange={(e) => setEditing({ ...editing, date: e.target.value })} style={inp} />
+            </Field>
+            <Field label="Type">
+              <select value={editing.category} onChange={(e) => setEditing({ ...editing, category: e.target.value })} style={inp}>
+                {Object.entries(CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v.label} — {v.th}</option>)}
+              </select>
+            </Field>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <Field label="Work Type">
+              <select value={editing.workType} onChange={(e) => setEditing({ ...editing, workType: e.target.value })} style={inp}>
+                {["แจก", "ขายของ", "-"].map((k) => <option key={k} value={k}>{WORK_TYPES[k].label}</option>)}
+              </select>
+            </Field>
+            <Field label="Target">
+              <select value={(editing.target && editing.target[0]) || ""} 
+                onChange={(e) => setEditing({ ...editing, target: e.target.value ? [e.target.value] : [] })} style={inp}>
+                <option value="">— Select —</option>
+                {Object.keys(TARGETS).map((k) => <option key={k} value={k}>{k}</option>)}
+              </select>
+            </Field>
+            <Field label="Agency">
+              {(() => {
+                const known = ["", "คุณโย", "คุณเฟิส"];
+                const val = editing.agency || "";
+                const isCustom = val.length > 0 && !known.includes(val);
+                return (<>
+                  <select value={isCustom ? "__other__" : val}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setEditing({ ...editing, agency: v === "__other__" ? " " : v });
+                    }}
+                    style={inp}>
+                    <option value="">Unassigned</option>
+                    <option value="คุณโย">คุณโย</option>
+                    <option value="คุณเฟิส">คุณเฟิส</option>
+                    <option value="__other__">Other...</option>
+                  </select>
+                  {isCustom && (
+                    <input value={val.trim()} onChange={(e) => setEditing({ ...editing, agency: e.target.value || " " })}
+                      style={{ ...inp, marginTop: 8 }} placeholder="Type agency name..." autoFocus />
+                  )}
+                </>);
+              })()}
+            </Field>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <Field label="Location / Province">
+              <input value={editing.location} onChange={(e) => setEditing({ ...editing, location: e.target.value })} style={inp} />
+            </Field>
+            <Field label="Notes (products/MC)">
+              <input value={editing.notes} onChange={(e) => setEditing({ ...editing, notes: e.target.value })} style={inp} />
+            </Field>
+          </div>
+
+          <Field label="Event Cost — Agency / Travel / Other (฿)">
+            <input type="number" min="0" value={editing.opCost || 0} onChange={(e) => setEditing({ ...editing, opCost: Number(e.target.value) || 0 })} style={inp} placeholder="0" />
+          </Field>
+
+          <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+            <button onClick={saveEvent} className="kanit" style={{ flex: 1, padding: "11px 0", borderRadius: 10, border: "none", background: BRAND, color: "#fff", fontWeight: 600, fontSize: 15, cursor: "pointer" }}>
+              Save
+            </button>
+            {editing.id && (
+              <button onClick={() => deleteEvent(editing.id)} style={{ padding: "11px 16px", borderRadius: 10, border: "1px solid #fecaca", background: "#fff", color: "#ef4444", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                <Trash2 size={16} /> Delete
+              </button>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {/* ---------- Import/Export modal ---------- */}
+      {io && (
+        <Modal onClose={() => setIo(null)} title={io.mode === "export" ? "Export Data" : "Import Data (paste JSON)"}>
+          <textarea value={io.text} onChange={(e) => setIo({ ...io, text: e.target.value })} readOnly={io.mode === "export"}
+            style={{ width: "100%", height: 300, fontFamily: "monospace", fontSize: 12, border: "1px solid #e2e8f0", borderRadius: 10, padding: 12, resize: "vertical" }} />
+          <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+            {io.mode === "export" ? (
+              <button onClick={copyText} className="kanit" style={{ flex: 1, padding: "11px 0", borderRadius: 10, border: "none", background: BRAND, color: "#fff", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                {copied ? <><Check size={16} /> Copied</> : <><Copy size={16} /> Copy</>}
+              </button>
+            ) : (
+              <button onClick={doImport} className="kanit" style={{ flex: 1, padding: "11px 0", borderRadius: 10, border: "none", background: BRAND, color: "#fff", fontWeight: 600, cursor: "pointer" }}>
+                Import
+              </button>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {/* ---------- Sponsor Deals modal ---------- */}
+      {showDeals && (
+        <Modal onClose={() => { setShowDeals(false); setEditDeal(null); }} title="Sponsor Deals (Media Sponsorship)">
+          <div style={{ fontSize: 13, color: "#64748b", marginBottom: 12 }}>ค่า Sponsor จ่ายรวมต่อโปรแกรม · Total: <b style={{ color: "#DC2626" }}>฿{fmt(deals.reduce((a, d) => a + (d.cost || 0), 0))}</b></div>
+          <div style={{ maxHeight: 360, overflow: "auto", border: "1px solid #e2e8f0", borderRadius: 10 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead><tr style={{ background: "#f8faf8", position: "sticky", top: 0 }}>
+                <th style={th}>Channel</th><th style={th}>Program</th><th style={{ ...th, textAlign: "right" }}>Cost (฿)</th><th style={{ ...th, width: 60 }}></th>
+              </tr></thead>
+              <tbody>
+                {deals.map((d) => (
+                  <tr key={d.id} style={{ borderBottom: "1px solid #f1f5f4" }}>
+                    <td style={td}>{d.ch}</td>
+                    <td style={td}>{d.prog}</td>
+                    <td style={{ ...td, textAlign: "right", fontWeight: 600, color: d.cost > 0 ? "#1f2937" : "#94a3b8" }}>{d.cost > 0 ? fmt(d.cost) : "Free"}</td>
+                    <td style={{ ...td, textAlign: "center" }}>
+                      <button onClick={() => setEditDeal({ ...d })} style={{ border: "none", background: "transparent", color: "#94a3b8", cursor: "pointer" }}><Pencil size={14} /></button>
+                      <button onClick={() => persistDeals(deals.filter((x) => x.id !== d.id))} style={{ border: "none", background: "transparent", color: "#f87171", cursor: "pointer" }}><Trash2 size={14} /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Add / Edit deal */}
+          {editDeal ? (
+            <div style={{ marginTop: 14, padding: 14, background: "#f8faf8", borderRadius: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                <Field label="Channel"><input value={editDeal.ch} onChange={(e) => setEditDeal({ ...editDeal, ch: e.target.value })} style={inp} /></Field>
+                <Field label="Program"><input value={editDeal.prog} onChange={(e) => setEditDeal({ ...editDeal, prog: e.target.value })} style={inp} /></Field>
+                <Field label="Category"><select value={editDeal.cat || "NPD"} onChange={(e) => setEditDeal({ ...editDeal, cat: e.target.value })} style={inp}>
+                  {Object.entries(CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                </select></Field>
+              </div>
+              <Field label={`Monthly Cost (Total: ฿${fmt((editDeal.m||M0).reduce((a,v)=>a+v,0))})`}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 6 }}>
+                  {MONTHS_ABBR.map((mn, i) => (
+                    <div key={i}>
+                      <div style={{ fontSize: 10, color: "#94a3b8", textAlign: "center", marginBottom: 2 }}>{mn}</div>
+                      <input type="number" min="0" value={(editDeal.m||M0)[i]||0}
+                        onChange={(e) => { const nm = [...(editDeal.m||M0)]; nm[i] = Number(e.target.value)||0; setEditDeal({ ...editDeal, m: nm }); }}
+                        style={{ ...inp, padding: "6px 4px", fontSize: 12, textAlign: "center" }} />
+                    </div>
+                  ))}
+                </div>
+              </Field>
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <button onClick={() => { const d = { ...editDeal, cost: (editDeal.m||M0).reduce((a,v)=>a+v,0) }; const next = d.id ? deals.map(x => x.id === d.id ? d : x) : [...deals, { ...d, id: newId() }]; persistDeals(next); setEditDeal(null); }}
+                  className="kanit" style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "none", background: BRAND, color: "#fff", fontWeight: 600, cursor: "pointer" }}>Save</button>
+                <button onClick={() => setEditDeal(null)} style={{ padding: "9px 16px", borderRadius: 10, border: "1px solid #e2e8f0", background: "#fff", color: "#64748b", cursor: "pointer" }}>Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setEditDeal({ id: null, ch: "", prog: "", cat: "NPD", m: [...M0], cost: 0 })} className="kanit"
+              style={{ marginTop: 14, width: "100%", padding: "10px 0", borderRadius: 10, border: "1px dashed #cbd5e1", background: "#fff", color: BRAND, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <Plus size={16} /> Add Deal
+            </button>
+          )}
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ----------------------------- Small components --------------------------- */
+const navBtn = { height: 38, minWidth: 38, borderRadius: 10, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", display: "grid", placeItems: "center", color: "#475569" };
+const inp = { width: "100%", padding: "9px 11px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 14, fontFamily: "inherit", background: "#fff" };
+const th = { padding: "8px 10px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "#64748b" };
+const td = { padding: "8px 10px" };
+
+function HBtn({ children, icon: Icon, onClick }) {
+  return (
+    <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,.16)", color: "#fff", border: "1px solid rgba(255,255,255,.25)", borderRadius: 9, padding: "7px 12px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+      <Icon size={15} /> {children}
+    </button>
+  );
+}
+
+function StatCard({ label, value, accent, sub, icon: Icon }) {
+  return (
+    <div style={{ background: "#fff", borderRadius: 14, padding: "14px 16px", border: "1px solid #e8ece8", borderLeft: `4px solid ${accent}` }}>
+      <div style={{ fontSize: 12, color: "#94a3b8", display: "flex", alignItems: "center", gap: 5 }}>{Icon && <Icon size={13} />}{label}</div>
+      <div className="kanit" style={{ fontSize: 28, fontWeight: 700, color: accent, lineHeight: 1.2 }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: "#cbd5e1" }}>{sub}</div>}
+    </div>
+  );
+}
+
+function SegBtn({ children, active, onClick, icon: Icon }) {
+  return (
+    <button onClick={onClick} className="kanit" style={{ ...navBtn, padding: "0 14px", display: "flex", alignItems: "center", gap: 6, fontWeight: 600, fontSize: 13,
+      background: active ? "#e8f5ee" : "#fff", color: active ? BRAND : "#475569", border: active ? `1px solid ${BRAND}` : "1px solid #e2e8f0" }}>
+      <Icon size={16} /> {children}
+    </button>
+  );
+}
+
+function FilterRow({ title, children }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <span className="kanit" style={{ fontSize: 13, fontWeight: 600, color: "#64748b", minWidth: 110 }}>{title}</span>
+      <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>{children}</div>
+    </div>
+  );
+}
+
+function FChip({ children, active, color, onClick }) {
+  return (
+    <button onClick={onClick} className="chip" style={{ padding: "5px 12px", borderRadius: 18, fontSize: 13, cursor: "pointer", fontFamily: "inherit", fontWeight: 500,
+      border: `1.5px solid ${color}`, background: active ? color : "#fff", color: active ? "#fff" : color }}>
+      {children}
+    </button>
+  );
+}
+
+function EventChip({ e, onClick }) {
+  const cat = CATEGORIES[e.category] || CATEGORIES.NPD;
+  const wt = WORK_TYPES[e.workType] || WORK_TYPES["-"];
+  return (
+    <button onClick={onClick} title={`${e.title}${e.location ? " · " + e.location : ""}`}
+      style={{ textAlign: "left", border: "none", borderLeft: `3px solid ${cat.color}`, background: cat.color + "1a", borderRadius: 5, padding: "3px 5px", cursor: "pointer", width: "100%", fontFamily: "inherit", display: "flex", flexDirection: "column", gap: 2 }}>
+      <span style={{ fontSize: 11, fontWeight: 600, color: "#334155", lineHeight: 1.25, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{e.title}</span>
+      <span style={{ fontSize: 9, color: cat.color, fontWeight: 600 }}>{wt.label}</span>
+    </button>
+  );
+}
+
+function ListRow({ e, onEdit }) {
+  const cat = CATEGORIES[e.category] || CATEGORIES.NPD;
+  const dd = e.date.slice(8, 10);
+  const totalCost = (e.sponsorCost || 0) + (e.opCost || 0);
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 16px", borderBottom: "1px solid #f1f5f4", flexWrap: "wrap" }}>
+      <div style={{ textAlign: "center", minWidth: 36 }}>
+        <div className="kanit" style={{ fontSize: 18, fontWeight: 700, color: cat.color, lineHeight: 1 }}>{dd}</div>
+      </div>
+      <span style={{ width: 4, alignSelf: "stretch", borderRadius: 4, background: cat.color, minHeight: 36 }} />
+      <div style={{ flex: 1, minWidth: 120 }}>
+        <div style={{ fontWeight: 600, fontSize: 14, color: "#1f2937" }}>{e.title}</div>
+        <div style={{ fontSize: 12, color: "#94a3b8" }}>{cat.label} · {(WORK_TYPES[e.workType] || WORK_TYPES["-"]).label}{e.location ? " · " + e.location : ""}</div>
+      </div>
+      {totalCost > 0 && (
+        <span style={{ fontSize: 12, fontWeight: 600, color: "#DC2626", background: "#FEF2F2", borderRadius: 14, padding: "3px 10px", whiteSpace: "nowrap" }}>
+          ฿{fmt(totalCost)}
+        </span>
+      )}
+      <button onClick={onEdit} style={{ border: "none", background: "transparent", color: "#94a3b8", cursor: "pointer", padding: 6 }}><Pencil size={16} /></button>
+    </div>
+  );
+}
+
+function Modal({ children, title, onClose }) {
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.45)", display: "grid", placeItems: "center", padding: 16, zIndex: 50 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 18, width: "100%", maxWidth: 540, maxHeight: "90vh", overflow: "auto", padding: 22, boxShadow: "0 24px 60px rgba(0,0,0,.25)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <h3 className="kanit" style={{ margin: 0, fontSize: 19, fontWeight: 600 }}>{title}</h3>
+          <button onClick={onClose} style={{ border: "none", background: "#f1f5f4", borderRadius: 9, width: 32, height: 32, display: "grid", placeItems: "center", cursor: "pointer", color: "#64748b" }}><X size={18} /></button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 6 }}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+/* ---- Timeline: ภาพรวมFull yearในหน้าเดียว (แนวนอนแบบ Gantt) ---- */
+function Timeline({ events, onPick }) {
+  const YEAR = 2026;
+  const LABEL_W = 132;     // ความกว้างคอลัมน์ชื่อType (ซ้าย)
+  const PLOT_W = 1020;     // ความกว้างพื้นที่ไทม์ไลน์
+  const PILL_H = 22, ROW_GAP = 6, LANE_PAD = 12;
+  const start = new Date(YEAR, 0, 1).getTime();
+  const end = new Date(YEAR, 11, 31).getTime();
+  const span = end - start;
+  const frac = (ds) => Math.max(0, Math.min(1, (new Date(ds).getTime() - start) / span));
+  const monthAbbr = MONTHS_ABBR;
+
+  // เส้น "วันนี้"
+  const today = new Date();
+  const todayFrac = (today.getFullYear() === YEAR) ? frac(today.toISOString().slice(0, 10)) : null;
+
+  // จัดเรียงอีเวนต์เข้าแถวย่อยในแต่ละ lane เพื่อไม่ให้ทับกัน
+  const lanes = Object.keys(CATEGORIES).map((catKey) => {
+    const evs = events.filter((e) => e.category === catKey)
+      .map((e) => {
+        const x = frac(e.date) * PLOT_W;
+        const w = Math.min(Math.max(e.title.length * 6.0 + 26, 52), 240);
+        return { e, x, w };
+      }).sort((a, b) => a.x - b.x);
+    const rows = [];
+    evs.forEach((it) => {
+      let placed = false;
+      for (const row of rows) {
+        const last = row[row.length - 1];
+        if (it.x >= last.x + last.w + 6) { row.push(it); placed = true; break; }
+      }
+      if (!placed) rows.push([it]);
+    });
+    return { catKey, rows };
+  });
+
+  return (
+    <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e8ece8", padding: 14, overflowX: "auto" }}>
+      <div style={{ minWidth: LABEL_W + PLOT_W }}>
+        {/* แกนเดือน */}
+        <div style={{ display: "flex" }}>
+          <div style={{ width: LABEL_W, flex: "0 0 auto" }} />
+          <div style={{ position: "relative", width: PLOT_W, height: 30 }}>
+            {monthAbbr.map((mn, i) => {
+              const left = (new Date(YEAR, i, 1).getTime() - start) / span * PLOT_W;
+              const right = (new Date(YEAR, i + 1, 1).getTime() - start) / span * PLOT_W;
+              return (
+                <div key={i} style={{ position: "absolute", left, width: right - left, top: 0, bottom: 0,
+                  background: i % 2 ? "#f1f5f3" : "#e8efe9", borderRadius: 6, display: "grid", placeItems: "center",
+                  fontSize: 12, fontWeight: 600, color: "#64748b", marginRight: 2 }}>{mn}</div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* lanes */}
+        <div style={{ position: "relative", marginTop: 8 }}>
+          {/* เส้นแบ่งเดือนจางๆ พาดทุก lane */}
+          <div style={{ position: "absolute", left: LABEL_W, right: 0, top: 0, bottom: 0, pointerEvents: "none" }}>
+            {monthAbbr.map((_, i) => {
+              const left = (new Date(YEAR, i, 1).getTime() - start) / span * PLOT_W;
+              return <div key={i} style={{ position: "absolute", left, top: 0, bottom: 0, borderLeft: "1px solid #f1f5f4" }} />;
+            })}
+            {todayFrac != null && (
+              <div style={{ position: "absolute", left: todayFrac * PLOT_W, top: -4, bottom: 0 }}>
+                <div style={{ position: "absolute", top: 0, left: -5, width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: "7px solid #ef4444" }} />
+                <div style={{ position: "absolute", top: 0, bottom: 0, borderLeft: "2px dashed #ef4444" }} />
+              </div>
+            )}
+          </div>
+
+          {lanes.map(({ catKey, rows }) => {
+            const cat = CATEGORIES[catKey];
+            const laneH = Math.max(rows.length, 1) * (PILL_H + ROW_GAP) - ROW_GAP + LANE_PAD * 2;
+            return (
+              <div key={catKey} style={{ display: "flex", alignItems: "stretch", marginBottom: 8 }}>
+                {/* label */}
+                <div style={{ width: LABEL_W, flex: "0 0 auto", paddingRight: 10, display: "flex", alignItems: "center" }}>
+                  <div className="kanit" style={{ background: cat.color, color: "#fff", borderRadius: 10, padding: "8px 10px", fontSize: 13, fontWeight: 600, width: "100%", textAlign: "center", lineHeight: 1.2 }}>
+                    {cat.label}
+                  </div>
+                </div>
+                {/* plot */}
+                <div style={{ position: "relative", width: PLOT_W, minHeight: laneH, background: "#fafbfa", borderRadius: 10 }}>
+                  {rows.map((row, ri) => row.map(({ e, x, w }) => {
+                    const top = LANE_PAD + ri * (PILL_H + ROW_GAP);
+                    const left = Math.min(x, PLOT_W - w);
+                    return (
+                      <button key={e.id} onClick={() => onPick(e)} title={`${e.date} · ${e.title}${e.location ? " · " + e.location : ""}`}
+                        style={{ position: "absolute", left, top, width: w, height: PILL_H, background: cat.color, color: "#fff",
+                          border: "none", borderRadius: 11, fontSize: 11, fontWeight: 600, fontFamily: "inherit", cursor: "pointer",
+                          padding: "0 9px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textAlign: "left",
+                          display: "flex", alignItems: "center", gap: 5 }}>
+                        <span style={{ opacity: .85, fontWeight: 700 }}>{e.date.slice(8, 10)}/{e.date.slice(5, 7)}</span>
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{e.title.replace(/^School Tour • /, "").replace(/^Goodbye Ontour • /, "GBO ").replace(/^ช่องวันตะลุยโรงงาน • /, "ตะลุยโรงงาน ")}</span>
+                      </button>
+                    );
+                  }))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 8, marginLeft: LABEL_W }}>
+          Each bar = 1 event (color by category) · Red dashed line = Today · Click a bar to edit
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(React.createElement(App));
+</script>
+</body>
+</html>
