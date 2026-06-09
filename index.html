@@ -234,7 +234,8 @@ function App() {
 
   useEffect(() => {
     let es;
-    const applyData = (d) => { if (d && Array.isArray(d.events)) { setEvents(d.events); if (Array.isArray(d.deals)) setDeals(d.deals); } };
+    const norm = (e) => ({ ...e, target: Array.isArray(e.target) ? e.target : [] });
+    const applyData = (d) => { if (d && Array.isArray(d.events)) { setEvents(d.events.map(norm)); if (Array.isArray(d.deals)) setDeals(d.deals.map((x) => ({ ...x, m: Array.isArray(x.m) ? x.m : [...M0] }))); } };
     (async () => {
       try {
         const r = await fetch(STATE_URL);
@@ -268,7 +269,7 @@ function App() {
     const f = filters;
     if (f.category.size && !f.category.has(ev.category)) return false;
     if (f.workType.size && !f.workType.has(ev.workType)) return false;
-    if (f.target.size && !ev.target.some((t) => f.target.has(t))) return false;
+    if (f.target.size && !(ev.target || []).some((t) => f.target.has(t))) return false;
     if (f.agency.size && !f.agency.has(ev.agency || "")) return false;
     return true;
   }, [filters]);
@@ -300,7 +301,7 @@ function App() {
     visible.forEach((e) => {
       s.cat[e.category] = (s.cat[e.category] || 0) + 1;
       s.work[e.workType] = (s.work[e.workType] || 0) + 1;
-      e.target.forEach((t) => (s.tgt[t] = (s.tgt[t] || 0) + 1));
+      (e.target || []).forEach((t) => (s.tgt[t] = (s.tgt[t] || 0) + 1));
       const a = e.agency || "—";
       s.ag[a] = (s.ag[a] || 0) + 1;
       s.sponsor = (s.sponsor || 0) + (e.sponsorCost || 0);
