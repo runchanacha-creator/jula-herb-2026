@@ -224,43 +224,44 @@ function App() {
   });
   const YEAR = 2026;
 
-  /* ---- load / persist ---- */
+  /* ---- shared cloud storage (Firebase Realtime Database) ---- */
+  const FIREBASE_DB = "https://jula-herb-default-rtdb.asia-southeast1.firebasedatabase.app";
+  const STATE_URL = FIREBASE_DB + "/state.json";
+
+  const pushState = useCallback((evs, dls) => {
+    try { fetch(STATE_URL, { method: "PUT", body: JSON.stringify({ events: evs, deals: dls }) }); } catch (_) {}
+  }, []);
+
   useEffect(() => {
+    let es;
+    const applyData = (d) => { if (d && Array.isArray(d.events)) { setEvents(d.events); if (Array.isArray(d.deals)) setDeals(d.deals); } };
     (async () => {
       try {
-        if (window.storage) {
-          let ver = null;
-          try { const v = await window.storage.get("jh2026:seedv"); ver = v && v.value; } catch (_) {}
-          const r = await window.storage.get("jh2026:events");
-          if (r && r.value && ver === String(SEED_VERSION)) {
-            setEvents(JSON.parse(r.value));
-            try { const d = await window.storage.get("jh2026:deals"); if (d && d.value) setDeals(JSON.parse(d.value)); } catch(_){}
-          } else {
-            setEvents(SEED); setDeals(SEED_DEALS);
-            await window.storage.set("jh2026:events", JSON.stringify(SEED));
-            await window.storage.set("jh2026:deals", JSON.stringify(SEED_DEALS));
-            await window.storage.set("jh2026:seedv", String(SEED_VERSION));
-          }
-        }
+        const r = await fetch(STATE_URL);
+        const d = await r.json();
+        if (d && Array.isArray(d.events)) { applyData(d); }
+        else { await fetch(STATE_URL, { method: "PUT", body: JSON.stringify({ events: SEED, deals: SEED_DEALS }) }); }
       } catch (_) {}
       setReady(true);
+      try {
+        es = new EventSource(STATE_URL);
+        const refetch = async () => { try { const rr = await fetch(STATE_URL); const dd = await rr.json(); applyData(dd); } catch (_) {} };
+        es.addEventListener("put", refetch);
+        es.addEventListener("patch", refetch);
+      } catch (_) {}
     })();
+    return () => { if (es) es.close(); };
   }, []);
 
-  const persist = useCallback(async (next) => {
+  const persist = useCallback((next) => {
     setEvents(next);
-    try {
-      if (window.storage) {
-        await window.storage.set("jh2026:events", JSON.stringify(next));
-        await window.storage.set("jh2026:seedv", String(SEED_VERSION));
-      }
-    } catch (_) {}
-  }, []);
+    setDeals((d) => { pushState(next, d); return d; });
+  }, [pushState]);
 
-  const persistDeals = useCallback(async (next) => {
+  const persistDeals = useCallback((next) => {
     setDeals(next);
-    try { if (window.storage) await window.storage.set("jh2026:deals", JSON.stringify(next)); } catch (_) {}
-  }, []);
+    setEvents((e) => { pushState(e, next); return e; });
+  }, [pushState]);
 
   /* ---- filtering ---- */
   const match = useCallback((ev) => {
@@ -356,7 +357,7 @@ function App() {
     try { await navigator.clipboard.writeText(io.text); setCopied(true); setTimeout(() => setCopied(false), 1500); }
     catch (_) {}
   };
-  const resetSeed = () => { if (confirm("Reset to default data? (All edits will be lost)")) { persist(SEED); persistDeals(SEED_DEALS); } };
+  const resetSeed = () => { if (confirm("Reset to default data? (All edits will be lost)")) { setEvents(SEED); setDeals(SEED_DEALS); pushState(SEED, SEED_DEALS); } };
 
   /* ---- calendar grid ---- */
   const grid = useMemo(() => {
