@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>JULA'S HERB — Event Dashboard 2026 (Preview)</title>
+<title>JULA'S HERB — Event Dashboard 2026</title>
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -410,12 +410,47 @@ function App() {
 
       <main style={{ maxWidth: 1280, margin: "0 auto", padding: "20px 24px 60px" }}>
         {/* ---------- Stat cards ---------- */}
+        {view === "budget" ? (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, marginBottom: 16 }}>
           <StatCard label="Total Events" value={stats.total} accent={BRAND} sub={anyFilter ? "(filtered)" : "Full year"} />
           <StatCard label="Sponsor Cost" value={fmt(stats.dealTotal || 0)} accent="#CA8A04" sub="฿" />
           <StatCard label="Agency / Op Cost" value={fmt(stats.ops || 0)} accent="#2D6FA8" sub="฿" />
           <StatCard label="Total Spend" value={fmt(stats.totalSpend || 0)} accent="#DC2626" sub="฿" />
         </div>
+        ) : view === "timeline" ? (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, marginBottom: 16 }}>
+          <StatCard label="Total Events" value={stats.total} accent={BRAND} sub={anyFilter ? "(filtered)" : "Full year"} />
+        </div>
+        ) : (() => {
+          const monthEvents = visible.filter((e) => parseInt(e.date.slice(5, 7), 10) - 1 === month);
+          const catCount = {};
+          monthEvents.forEach((e) => { catCount[e.category] = (catCount[e.category] || 0) + 1; });
+          const cats = Object.keys(CATEGORIES).filter((k) => catCount[k]);
+          return (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, marginBottom: cats.length ? 12 : 0 }}>
+                <StatCard label="Total Events (Full year)" value={stats.total} accent="#475569" icon={CalendarDays} sub={anyFilter ? "(filtered)" : "2026"} />
+                <StatCard label={`Total Events · ${MONTHS[month]}`} value={monthEvents.length} accent={BRAND} icon={CalendarDays} sub={anyFilter ? `${MONTHS[month]} (filtered)` : `${MONTHS[month]} 2026`} />
+              </div>
+              {cats.length > 0 ? (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {cats.map((k) => {
+                    const c = CATEGORIES[k];
+                    return (
+                      <div key={k} style={{ display: "flex", alignItems: "center", gap: 8, background: c.color + "14", border: `1px solid ${c.color}55`, borderRadius: 10, padding: "8px 12px" }}>
+                        <span style={{ width: 10, height: 10, borderRadius: 3, background: c.color, display: "inline-block" }} />
+                        <span className="kanit" style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>{c.label}</span>
+                        <span className="kanit" style={{ fontSize: 14, fontWeight: 700, color: c.color }}>{catCount[k]}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, color: "#94a3b8" }}>No events this month</div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ---------- Toolbar ---------- */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
