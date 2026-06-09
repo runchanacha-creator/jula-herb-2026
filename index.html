@@ -202,7 +202,7 @@ const newId = () => `e-${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
 const fmt = (n) => Number(n || 0).toLocaleString("en-US");
 const blankForm = (date) => ({
   id: null, date: date || "2026-05-01", title: "", category: "NPD",
-  workType: "แจก", target: [], agency: "", location: "", notes: "",
+  workType: "-", target: [], agency: "", location: "", notes: "",
   sponsorCost: 0, opCost: 0,
 });
 
@@ -802,7 +802,7 @@ function App() {
       {/* ---------- Editor modal ---------- */}
       {editing && (
         <Modal onClose={() => setEditing(null)} title={editing.id ? "Edit Event" : "Add Event"}>
-          <Field label="Event Name">
+          <Field label="Event Name * — ใส่แค่ชื่อก็กด Save ได้ (ช่องอื่นไม่บังคับ)">
             <input value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} style={inp} placeholder="e.g. School Tour • School name ..." autoFocus />
           </Field>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
