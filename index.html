@@ -549,10 +549,14 @@ function App() {
                 const ds = ymd(YEAR, month, d);
                 const evs = byDate[ds] || [];
                 const wd = new Date(YEAR, month, d).getDay();
+                const _t = new Date();
+                const todayStr = ymd(_t.getFullYear(), _t.getMonth(), _t.getDate());
+                const isToday = ds === todayStr;
+                const isPast = ds < todayStr;
                 return (
-                  <div key={i} className="cell" style={{ minHeight: 96, borderRadius: 10, border: "1px solid #eef1ee", background: evs.length ? "#fff" : "#fcfdfc", padding: 6, position: "relative", display: "flex", flexDirection: "column", gap: 4 }}>
+                  <div key={i} className="cell" style={{ minHeight: 96, borderRadius: 10, border: isToday ? `2px solid ${BRAND}` : "1px solid #eef1ee", background: isToday ? "#eef7f1" : isPast ? "#f1f3f5" : (evs.length ? "#fff" : "#fcfdfc"), opacity: isPast ? 0.55 : 1, boxShadow: isToday ? `0 0 0 3px ${BRAND}22` : "none", padding: 6, position: "relative", display: "flex", flexDirection: "column", gap: 4 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: wd === 0 ? "#ef4444" : wd === 6 ? "#3b82f6" : "#94a3b8" }}>{d}</span>
+                      <span style={{ fontSize: 12, fontWeight: isToday ? 700 : 600, color: isToday ? BRAND : isPast ? "#cbd5e1" : (wd === 0 ? "#ef4444" : wd === 6 ? "#3b82f6" : "#94a3b8") }}>{d}</span>
                       <button className="addbtn" onClick={() => setEditing(blankForm(ds))}
                         style={{ opacity: 1, border: "none", background: "#eef5f0", color: BRAND, borderRadius: 6, width: 22, height: 22, display: "grid", placeItems: "center", cursor: "pointer", fontSize: 14, fontWeight: 700 }}>
                         <Plus size={14} />
